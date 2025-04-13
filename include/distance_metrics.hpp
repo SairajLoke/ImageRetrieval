@@ -3,9 +3,9 @@
 #include <vector>
 #include <string>
 
-using namespace std;
+// using namespace std;
 
-typedef vector<float> FeatureVector;
+typedef std::vector<float> FeatureVector;
 
 class DistanceMetrics {
 public:
