@@ -1,0 +1,3 @@
+/home/yash/Documents/ImageRetrieval/CMakeFiles/image_retrieval.dir
+/home/yash/Documents/ImageRetrieval/CMakeFiles/edit_cache.dir
+/home/yash/Documents/ImageRetrieval/CMakeFiles/rebuild_cache.dir
