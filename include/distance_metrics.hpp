@@ -7,6 +7,13 @@
 
 typedef std::vector<float> FeatureVector;
 
+enum metric_name{
+    chi_square,
+    manhattan,
+    cosine,
+    euclidean
+};
+
 class DistanceMetrics {
 public:
     static float euclidean(const FeatureVector& a, const FeatureVector& b);

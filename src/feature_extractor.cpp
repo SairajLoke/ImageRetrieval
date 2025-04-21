@@ -55,3 +55,5 @@ FeatureVector OpponentFeatureExtractor :: extractImgFeatures(const Mat& image) {
         }
         return hist;
 }
+
+
