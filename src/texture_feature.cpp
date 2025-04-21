@@ -122,36 +122,36 @@ void processImage(const std::string& imagePath,
 }
 
 // === Main ===
-int main() {
-    std::string datasetPath = "Datasets/wang/Images/train";
+// int main() {
+//     std::string datasetPath = "../Datasets/wang/Images/train"; 
 
-    std::ofstream lbpFile("lbp_features.csv");
-    std::ofstream glcmFile("glcm_features.csv");
-    std::ofstream gaborFile("gabor_features.csv");
+//     std::ofstream lbpFile("../Datasets/wang/FeatureDatabase/lbp_features.csv");
+//     std::ofstream glcmFile("../Datasets/wang/FeatureDatabase/glcm_features.csv");
+//     std::ofstream gaborFile("../Datasets/wang/FeatureDatabase/gabor_features.csv");
 
-    // Headers
-    lbpFile << "image_path";
-    for (int i = 0; i < 256; i++) lbpFile << ",hist_" << i;
-    lbpFile << "\n";
+//     // Headers
+//     lbpFile << "image_path";
+//     for (int i = 0; i < 256; i++) lbpFile << ",hist_" << i;
+//     lbpFile << "\n";
 
-    glcmFile << "image_path";
-    for (int i = 0; i < 64; i++) glcmFile << ",glcm_hist_" << i;
-    glcmFile << "\n";
+//     glcmFile << "image_path";
+//     for (int i = 0; i < 64; i++) glcmFile << ",glcm_hist_" << i;
+//     glcmFile << "\n";
 
-    gaborFile << "image_path";
-    for (int i = 0; i < 64; i++) gaborFile << ",gabor_hist_" << i;
-    gaborFile << "\n";
+//     gaborFile << "image_path";
+//     for (int i = 0; i < 64; i++) gaborFile << ",gabor_hist_" << i;
+//     gaborFile << "\n";
 
-    for (const auto& entry : fs::recursive_directory_iterator(datasetPath)) {
-        if (entry.is_regular_file() && entry.path().extension() == ".jpg") {
-            processImage(entry.path().string(), lbpFile, glcmFile, gaborFile);
-        }
-    }
+//     for (const auto& entry : fs::recursive_directory_iterator(datasetPath)) {
+//         if (entry.is_regular_file() && entry.path().extension() == ".jpg") {
+//             processImage(entry.path().string(), lbpFile, glcmFile, gaborFile);
+//         }
+//     }
 
-    lbpFile.close();
-    glcmFile.close();
-    gaborFile.close();
+//     lbpFile.close();
+//     glcmFile.close();
+//     gaborFile.close();
 
-    std::cout << "✅ All features extracted and saved.\n";
-    return 0;
-}
+//     std::cout << "✅ All features extracted and saved.\n";
+//     return 0;
+// }
