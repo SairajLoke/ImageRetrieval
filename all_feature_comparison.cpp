@@ -144,17 +144,22 @@ std::vector<float> computeSIFTFeatures(const cv::Mat& gray) {
 float chiSquaredDistance(const std::vector<float>& A, const std::vector<float>& B) {
     float dist = 0.0f;
     for (size_t i = 0; i < A.size(); i++) {
-        float sum = A[i] + B[i];
+        float sum=A[i]+B[i];
+        // float sum = abs(A[i]) + abs(B[i]);
+        
         if (sum > 0)
             dist += ((A[i] - B[i]) * (A[i] - B[i])) / sum;
+            // dist+=abs(A[i]-B[i])/sum;
     }
     return dist;
 }
+
 
 void evaluateFeatures(const std::vector<ImageFeature>& images, int K, const std::string& featureType) {
     std::map<std::string, int> class_counts;
     std::map<std::string, float> top1_hits;
     std::map<std::string, float> topk_hits;
+    std::map<std::string, float> majority_vote_hits;
 
     for (size_t i = 0; i < images.size(); i++) {
         using Pair = std::pair<float, int>;
@@ -204,22 +209,29 @@ void evaluateFeatures(const std::vector<ImageFeature>& images, int K, const std:
                 sameClassInTopK++;
         }
         topk_hits[images[i].label] += (float)sameClassInTopK / K;
+
+        if (sameClassInTopK > K / 2) {
+            majority_vote_hits[images[i].label] += 1.0;
+        }
+
         class_counts[images[i].label]++;
     }
 
-    std::cout << "\n==== " << featureType << " Per-Class Top-1 and Top-" << K << " Accuracy ====\n";
+    std::cout << "\n==== " << featureType << " Per-Class Metrics (Top-1 / Top-" << K << " / Majority Vote) ====\n";
     for (const auto& [label, count] : class_counts) {
         float top1 = top1_hits[label] / count;
         float topk = topk_hits[label] / count;
+        float majority = majority_vote_hits[label] / count;
         std::cout << "Class: " << label
                   << " | Top-1 Accuracy: " << top1 * 100 << "%"
-                  << " | Top-" << K << " Accuracy: " << topk * 100 << "%\n";
+                  << " | Top-" << K << " Avg Hit Rate: " << topk * 100 << "%"
+                  << " | Majority Vote Accuracy: " << majority * 100 << "%\n";
     }
 }
 
 int main() {
     std::string folderPath = "Datasets/wang/Images/train";
-    int K = 10;
+    int K = 5;
     std::vector<ImageFeature> images;
 
     for (const auto& entry : fs::recursive_directory_iterator(folderPath)) {
