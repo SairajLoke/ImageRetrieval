@@ -20,7 +20,7 @@ file(GLOB SOURCES src/*.cpp)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Create executable
-add_executable(image_retrieval main.cpp ${SOURCES})
+add_executable(image_retrieval lbp_extractNretrive ${SOURCES})
 
 # Link OpenCV
 target_link_libraries(image_retrieval ${OpenCV_LIBS})
