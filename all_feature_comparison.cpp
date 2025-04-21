@@ -1,4 +1,5 @@
 #include <opencv2/opencv.hpp>
+#include <opencv2/features2d.hpp>
 #include <iostream>
 #include <filesystem>
 #include <vector>
@@ -17,6 +18,7 @@ struct ImageFeature {
     std::vector<float> color_moments;
     std::vector<float> glcm_feature;
     std::vector<float> gabor_feature;
+    std::vector<float> sift_feature;
 };
 
 cv::Mat computeLBP(const cv::Mat& gray) {
@@ -125,6 +127,20 @@ std::vector<float> computeGaborFeatures(const cv::Mat& gray) {
     return features;
 }
 
+std::vector<float> computeSIFTFeatures(const cv::Mat& gray) {
+    std::vector<cv::KeyPoint> keypoints;
+    cv::Mat descriptors;
+    auto sift = cv::SIFT::create();
+    sift->detectAndCompute(gray, cv::Mat(), keypoints, descriptors);
+
+    std::vector<float> feature(128, 0.0f);
+    if (!descriptors.empty()) {
+        cv::reduce(descriptors, descriptors, 0, cv::REDUCE_AVG);
+        feature.assign((float*)descriptors.datastart, (float*)descriptors.dataend);
+    }
+    return feature;
+}
+
 float chiSquaredDistance(const std::vector<float>& A, const std::vector<float>& B) {
     float dist = 0.0f;
     for (size_t i = 0; i < A.size(); i++) {
@@ -150,7 +166,8 @@ void evaluateFeatures(const std::vector<ImageFeature>& images, int K, const std:
             featureType == "ColorHist" ? images[i].color_histogram :
             featureType == "ColorMoment" ? images[i].color_moments :
             featureType == "GLCM" ? images[i].glcm_feature :
-            images[i].gabor_feature;
+            featureType == "Gabor" ? images[i].gabor_feature :
+            images[i].sift_feature;
 
         for (size_t j = 0; j < images.size(); j++) {
             if (i == j) continue;
@@ -159,7 +176,8 @@ void evaluateFeatures(const std::vector<ImageFeature>& images, int K, const std:
                 featureType == "ColorHist" ? images[j].color_histogram :
                 featureType == "ColorMoment" ? images[j].color_moments :
                 featureType == "GLCM" ? images[j].glcm_feature :
-                images[j].gabor_feature;
+                featureType == "Gabor" ? images[j].gabor_feature :
+                images[j].sift_feature;
 
             float dist = chiSquaredDistance(query, candidate);
             if (topK.size() < K) {
@@ -199,73 +217,9 @@ void evaluateFeatures(const std::vector<ImageFeature>& images, int K, const std:
     }
 }
 
-void evaluateCombinedFeatures(const std::vector<ImageFeature>& images, int K) {
-    std::map<std::string, int> class_counts;
-    std::map<std::string, float> top1_hits;
-    std::map<std::string, float> topk_hits;
-
-    for (size_t i = 0; i < images.size(); i++) {
-        using Pair = std::pair<float, int>;
-        auto cmp = [](Pair a, Pair b) { return a.first < b.first; };
-        std::priority_queue<Pair, std::vector<Pair>, decltype(cmp)> topK(cmp);
-
-        std::vector<float> query_combined;
-        query_combined.insert(query_combined.end(), images[i].lbp_feature.begin(), images[i].lbp_feature.end());
-        query_combined.insert(query_combined.end(), images[i].color_histogram.begin(), images[i].color_histogram.end());
-        query_combined.insert(query_combined.end(), images[i].color_moments.begin(), images[i].color_moments.end());
-        query_combined.insert(query_combined.end(), images[i].glcm_feature.begin(), images[i].glcm_feature.end());
-        query_combined.insert(query_combined.end(), images[i].gabor_feature.begin(), images[i].gabor_feature.end());
-
-        for (size_t j = 0; j < images.size(); j++) {
-            if (i == j) continue;
-            std::vector<float> candidate_combined;
-            candidate_combined.insert(candidate_combined.end(), images[j].lbp_feature.begin(), images[j].lbp_feature.end());
-            candidate_combined.insert(candidate_combined.end(), images[j].color_histogram.begin(), images[j].color_histogram.end());
-            candidate_combined.insert(candidate_combined.end(), images[j].color_moments.begin(), images[j].color_moments.end());
-            candidate_combined.insert(candidate_combined.end(), images[j].glcm_feature.begin(), images[j].glcm_feature.end());
-            candidate_combined.insert(candidate_combined.end(), images[j].gabor_feature.begin(), images[j].gabor_feature.end());
-
-            float dist = chiSquaredDistance(query_combined, candidate_combined);
-            if (topK.size() < K) {
-                topK.push({ dist, (int)j });
-            } else if (dist < topK.top().first) {
-                topK.pop();
-                topK.push({ dist, (int)j });
-            }
-        }
-
-        int sameClassInTopK = 0;
-        std::vector<Pair> results;
-        while (!topK.empty()) {
-            results.push_back(topK.top());
-            topK.pop();
-        }
-        std::reverse(results.begin(), results.end());
-
-        if (!results.empty() && images[results[0].second].label == images[i].label)
-            top1_hits[images[i].label] += 1.0;
-
-        for (auto& r : results) {
-            if (images[r.second].label == images[i].label)
-                sameClassInTopK++;
-        }
-        topk_hits[images[i].label] += (float)sameClassInTopK / K;
-        class_counts[images[i].label]++;
-    }
-
-    std::cout << "\n==== Combined Feature Per-Class Top-1 and Top-" << K << " Accuracy ====\n";
-    for (const auto& [label, count] : class_counts) {
-        float top1 = top1_hits[label] / count;
-        float topk = topk_hits[label] / count;
-        std::cout << "Class: " << label
-                  << " | Top-1 Accuracy: " << top1 * 100 << "%"
-                  << " | Top-" << K << " Accuracy: " << topk * 100 << "%\n";
-    }
-}
-
 int main() {
     std::string folderPath = "Datasets/wang/Images/train";
-    int K = 5;
+    int K = 10;
     std::vector<ImageFeature> images;
 
     for (const auto& entry : fs::recursive_directory_iterator(folderPath)) {
@@ -286,6 +240,7 @@ int main() {
             f.color_moments = computeColorMoments(img);
             f.glcm_feature = computeGLCMFeatures(gray);
             f.gabor_feature = computeGaborFeatures(gray);
+            f.sift_feature = computeSIFTFeatures(gray);
 
             images.push_back(f);
         }
@@ -298,7 +253,7 @@ int main() {
     evaluateFeatures(images, K, "ColorMoment");
     evaluateFeatures(images, K, "GLCM");
     evaluateFeatures(images, K, "Gabor");
-    evaluateCombinedFeatures(images, K);
+    evaluateFeatures(images, K, "SIFT");
 
     return 0;
 }
